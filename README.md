@@ -222,11 +222,15 @@ typedef struct
 
 - **e_phoff**
 
-  程序头表的文件偏移量，以字节为单位。如果文件没有程序头表，则该成员为零。
+  `Program Header`的文件起始地址偏移量，以字节为单位。如果文件没有程序头表，则该成员为零。
 
 - **e_shoff**
 
+  指明节头表（section header table）开始处在文件中的偏移量
+
 - **e_flags**
+
+  处理器特定的标志，一般为0。
 
 - **e_ehsize**
 
@@ -234,13 +238,15 @@ typedef struct
 
 - **e_phentsize**
 
+  `Program Header`中每个表项的大小，以字节为单位
+
 - **e_phnum**
 
-  包含程序头表中条目的数量。
+  `Program Header`中总共有多少个表项，如果一个目标文件中没有程序头表，该值应设为 0
 
 - **e_shentsize**
 
-  包含一个段头表条目的大小。
+  一个段头表条目的大小。
 
 - **e_shnum**
 
@@ -249,3 +255,95 @@ typedef struct
 - **e_shstrndx**
 
   包含一个索引，指向段头表中包含段名称的段头条目。
+
+### Program Header
+
+> 参考文档：[Program Header - Linker and Libraries Guide (oracle.com)](https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-83432.html#scrolltoc)
+
+程序头表告诉系统如何创建进程映像。它位于文件偏移量`e_phoff`处，由`e_phnum`项组成，每个项的大小`e_phentsize`。32位ELF与64位ELF的布局略有不同，因为出于对齐原因，`p_flags`位于不同的结构位置。
+
+可用如下的命令来查看一个 ELF 文件的 `Program Header`
+
+```shell
+readelf -l prime
+```
+
+![image-20230425221721285](image/image-20230425221721285.png)
+
+可以看到该ELF文件的`Program Header`有三个表项
+
+- `Program Header`的定义如下
+
+```c
+typedef struct {
+        Elf32_Word      p_type;
+        Elf32_Off       p_offset;
+        Elf32_Addr      p_vaddr;
+        Elf32_Addr      p_paddr;
+        Elf32_Word      p_filesz;
+        Elf32_Word      p_memsz;
+        Elf32_Word      p_flags;
+        Elf32_Word      p_align;
+} Elf32_Phdr;
+
+typedef struct {
+        Elf64_Word      p_type;
+        Elf64_Word      p_flags;
+        Elf64_Off       p_offset;
+        Elf64_Addr      p_vaddr;
+        Elf64_Addr      p_paddr;
+        Elf64_Xword     p_filesz;
+        Elf64_Xword     p_memsz;
+        Elf64_Xword     p_align;
+} Elf64_Phdr;
+```
+
+
+
+- `p_type`
+
+  定义了段的类型
+
+  | Name               | Value        | Meaning                              |
+  | :----------------- | :----------- | ------------------------------------ |
+  | `PT_NULL`          | `0`          | 程序头表项未使用。                   |
+  | `PT_LOAD`          | `1`          | 此类型表明本程序头指向一个可装载的段 |
+  | `PT_DYNAMIC`       | `2`          | 表明本段指明了动态连接的信息。       |
+  | `PT_INTERP`        | `3`          |                                      |
+  | `PT_NOTE`          | `4`          |                                      |
+  | `PT_SHLIB`         | `5`          |                                      |
+  | `PT_PHDR`          | `6`          |                                      |
+  | `PT_TLS`           | `7`          |                                      |
+  | `PT_LOOS`          | `0x60000000` |                                      |
+  | `PT_SUNW_UNWIND`   | `0x6464e550` |                                      |
+  | `PT_SUNW_EH_FRAME` | `0x6474e550` |                                      |
+  | `PT_LOSUNW`        | `0x6ffffffa` |                                      |
+  | `PT_SUNWBSS`       | `0x6ffffffa` |                                      |
+  | `PT_SUNWSTACK`     | `0x6ffffffb` |                                      |
+  | `PT_SUNWDTRACE`    | `0x6ffffffc` |                                      |
+  | `PT_SUNWCAP`       | `0x6ffffffd` |                                      |
+  | `PT_HISUNW`        | `0x6fffffff` |                                      |
+  | `PT_HIOS`          | `0x6fffffff` |                                      |
+  | `PT_LOPROC`        | `0x70000000` |                                      |
+  | `PT_HIPROC`        | `0x7fffffff` |                                      |
+
+- `p_offset`（**P**rogram Header-File **Offset**）：此字段（8 字节）给出本段内容在文件中的位置，即段内容的开始位置相对于文件开头的偏移量。
+- `p_vaddr`（**P**rogram Header-**V**irtual **Addr**ess）：此字段（8 字节）给出本段内容的开始位置在进程空间中的虚拟地址。
+- `p_paddr`（**P**rogram Header-**P**hysical **Addr**ess）：此字段（8 字节）给出本段内容的开始位置在进程空间中的物理地址。对于目前大多数现代操作系统而言，应用程序中段的物理地址事先是不可知的，所以目前这个 成员多数情况下保留不用，或者被操作系统改作它用。
+
+- `p_filesz`（**P**rogram Header-**File** **S**i**z**e）：此字段（8 字节）给出本段内容在文件中的大小，单位是字节，可以是 0。
+- `p_memsz`（**P**rogram Header-**Mem**ory **S**i**z**e）：此字段（8 字节）给出本段内容在内容镜像中的大小，单位是字节，可以是 0。
+- `p_align`（**P**rogram Header-**Align**ment ）：此字段（8 字节）指明本段内容如何在内存和文件中对齐。如果该值为 0 或 1，表明没有对齐要求；否则，p_align 应该是一个正整数，并且是 2 的幂次数。p_vaddr 和 p_offset 在对 p_align 取模后应该相等。注：对于可装载的段来说，其 p_vaddr 和 p_offset 的值至少要向内存页面大小对齐。
+
+- `p_flags`（**P**rogram Header-**Flags**）：此字段（4 字节）给出本段内容的属性，指明了段的权限。虽然 ELF 文件格式中没有规定，但是一个可执行程序至少会有一个可加载的段。当为可加载段创建内存镜像时，系统会按照 p_flags 的指示给段赋予一定的权限。
+
+  | Name          | Value        | Meaning     |
+  | :------------ | :----------- | :---------- |
+  | `PF_X`        | `0x1`        | Execute     |
+  | `PF_W`        | `0x2`        | Write       |
+  | `PF_R`        | `0x4`        | Read        |
+  | `PF_MASKPROC` | `0xf0000000` | Unspecified |
+
+  
+
+  

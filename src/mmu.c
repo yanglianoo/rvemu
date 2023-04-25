@@ -66,7 +66,7 @@ void mmu_load_elf(mmu_t *mmu, int fd)
 
     elf64_ehdr_t *ehdr = (elf64_ehdr_t *)buf;
 
-    //elf 文件前四个字节为 0x7f 0x45 0x4c 0x46 
+    //elf 文件前四个字节为 0x7f 0x45 0x4c 0x46 1
     //printf("ELFMAG: %02x%02x%02x%02x\n", ELFMAG[0], ELFMAG[1], ELFMAG[2], ELFMAG[3]);
     //判断传入文件是否为 elf 格式的文件
     if (*(u32 *)ehdr != *(u32 *)ELFMAG)
