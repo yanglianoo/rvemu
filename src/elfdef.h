@@ -1,11 +1,12 @@
 #include "types.h"
 
 #define EI_NIDENT 16
+//所有的ASCII码都可以用“\”加数字（一般是8进制数字）来表示。
 #define ELFMAG "\177ELF"
 
-#define EM_RISCV 243
+#define EM_RISCV 0xF3  //risc-v 对应的 e_machine 的value值
 
-#define EI_CLASS     4
+#define EI_CLASS     4 //EI_NIDENT 的 第四位
 #define ELFCLASSNONE 0
 #define ELFCLASS32   1
 #define ELFCLASS64   2
@@ -20,6 +21,9 @@
 
 #define R_X86_64_PC32 2
 
+/**
+ * @brief  elf header 结构体定义
+ */
 typedef struct {
     u8 e_ident[EI_NIDENT];
     u16 e_type;
