@@ -3,9 +3,8 @@
 void machine_load_program(machine_t *m, char *prog)
 {
 
-    //打开elf文件，以只读的方式
+    //打开 elf 文件，以只读的方式
     int fd = open(prog, O_RDONLY);
-
     if(fd == -1)
     {
         fatal(strerror(errno));
