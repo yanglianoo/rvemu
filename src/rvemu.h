@@ -19,6 +19,7 @@
 #define fatalf(fmt, ...) (fprintf(stderr, "fatal: %s:%d " fmt "\n", __FILE__, __LINE__, __VA_ARGS__), exit(1))
 #define fatal(msg) fatalf("%s", msg)
 
+
 #define ROUNDDOWN(x, k) ((x) & -(k))
 #define ROUNDUP(x, k)   (((x) + (k)-1) & -(k))
 #define MIN(x, y)       ((y) > (x) ? (x) : (y))

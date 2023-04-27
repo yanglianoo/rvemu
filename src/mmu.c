@@ -1,8 +1,16 @@
 #include "rvemu.h"
 
+/**
+ * @brief  读取 elf phdr
+ * @param  phdr: program header
+ * @param  ehdr: elf header
+ * @param  i: program header 的条目
+ * @param  file: elf 文件指针
+ */
 static void load_phdr(elf64_phdr_t *phdr,elf64_ehdr_t *ehdr,i64 i,FILE *file)
 {
-    if(fseek(file,ehdr->e_phoff + ehdr->e_shentsize * i, SEEK_SET) != 0)
+    
+    if(fseek(file,ehdr->e_phoff + ehdr->e_phentsize * i, SEEK_SET) != 0)
     {
         fatal("seek file failed!");
     }
@@ -22,28 +30,43 @@ static int flags_to_mmap_prot(u32 flags)
 
 static void mmu_load_segment(mmu_t *mmu ,elf64_phdr_t *phdr, int fd)
 {
-    int page_size = getpagesize();
+    //获取分配的一页内存大小
+    int page_size = getpagesize(); // 4K = 4096 bytes 0x1000
+    // 获取本段在 elf 文件中的偏移地址
     u64 offset = phdr->p_offset;
+    // 获取本段内容的虚拟地址
     u64 vaddr = TO_HOST(phdr->p_paddr);
+    // 对齐地址到一页内存的边界，向下对齐
     u64 aligned_vaddr = ROUNDDOWN(vaddr, page_size);
-    u64 filesz = phdr->p_filesz + (vaddr - aligned_vaddr);
-    u64 memsz = phdr->p_memsz + (vaddr - aligned_vaddr);
+    
+    // 获取映射的内存大小
+    u64 filesz = phdr->p_filesz ;
+
+    u64 memsz = phdr->p_memsz ;
+
+    // 转成 mmap 的可读，可写，可执行的 flags
     int prot = flags_to_mmap_prot(phdr->p_flags);
 
+    //内存映射，将 elf 的 segment 映射到虚拟地址空间中,以页对齐的方式映射
     u64 addr = (u64)mmap((void *)aligned_vaddr, filesz, prot, MAP_PRIVATE | MAP_FIXED,
                         fd, ROUNDDOWN(offset, page_size));
 
+    // 判断内存映射是否成功
     assert(addr == aligned_vaddr);
 
+    // 获取 bss 段的大小,如果 bss 段很小，这里都向上页对齐的话 remaining_bss 的值会一直是零
     u64 remaining_bss = ROUNDUP(memsz, page_size) - ROUNDUP(filesz , page_size);
+    //u64 remaining_bss = memsz - filesz;
 
     if(remaining_bss > 0)
     {
+        //匿名映射，感觉没有对 bss 段做处理
         u64 addr = (u64)mmap((void *)(aligned_vaddr + ROUNDUP(filesz, page_size)),
                             remaining_bss, prot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
         assert(addr == aligned_vaddr + ROUNDUP(filesz, page_size));
     }
 
+    // 更新 mmu 结构体的值
     mmu->host_alloc = MAX(mmu->host_alloc, (aligned_vaddr + ROUNDUP(memsz, page_size)));
 
     mmu->base = mmu->alloc = TO_GUEST(mmu->host_alloc);
@@ -84,11 +107,12 @@ void mmu_load_elf(mmu_t *mmu, int fd)
     //读取 entry
     mmu->entry = (u64)ehdr->e_entry;
 
+    // Program Header 解析
     elf64_phdr_t phdr;
-    for (i64 i = 0; i < ehdr->e_phnum; i++)
+
+    for (int i = 0; i < ehdr->e_phnum; i++)
     {
         load_phdr(&phdr,ehdr,i,file);
-
         if(phdr.p_type == PT_LOAD)
         {
             mmu_load_segment(mmu , &phdr, fd);
