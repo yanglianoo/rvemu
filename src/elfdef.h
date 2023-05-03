@@ -1,3 +1,6 @@
+#ifndef RVEMU_ELDEF_H
+#define RVEMU_ELDEF_H
+
 #include "types.h"
 
 #define EI_NIDENT 16
@@ -54,5 +57,9 @@ typedef struct {
     u64 p_memsz;
     u64 p_align;
 } elf64_phdr_t;
+
+
+
+#endif
 
 
