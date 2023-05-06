@@ -1,5 +1,6 @@
 #include "rvemu.h"
 
+
 enum exit_reason_t machine_step(machine_t *m)
 {
     while (true)
@@ -15,8 +16,6 @@ enum exit_reason_t machine_step(machine_t *m)
 
         break;
     }
-
-
     assert(m->state.exit_reason == ecall);
     return ecall;
 }

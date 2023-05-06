@@ -19,7 +19,7 @@
 #include "reg.h"
 #define fatalf(fmt, ...) (fprintf(stderr, "fatal: %s:%d " fmt "\n", __FILE__, __LINE__, __VA_ARGS__), exit(1))
 #define fatal(msg) fatalf("%s", msg)
-
+#define unreachable() (fatal("unreachable"), __builtin_unreachable())
 
 #define ROUNDDOWN(x, k) ((x) & -(k))
 #define ROUNDUP(x, k)   (((x) + (k)-1) & -(k))
@@ -31,20 +31,22 @@
 #define TO_HOST(addr)  (addr + GUEST_MEMORY_OFFSET)
 #define TO_GUEST(addr) (addr - GUEST_MEMORY_OFFSET)
 
+//指令类型
 enum insn_type_t
 {
-    insn_addo,
-    num_insns,
+    insn_addi, // addi
+    num_insns, // 指令数量
 };
+//risc-v 指令结构体
 typedef struct 
 {
-    i8 rd;
-    i8 rs1;
-    i8 rs2;
-    i32 imm;
-    enum insn_type_t type;
-    bool rvc;
-    bool cont;
+    i8 rd;   //目标寄存器
+    i8 rs1;  //源寄存器1
+    i8 rs2;  //源寄存器2
+    i32 imm; // 32位立即数
+    enum insn_type_t type; //指令的类型
+    bool rvc; //表示指令是否是压缩指令
+    bool cont; //表示是否需要继续执行下一条指令，或者停止执行并返回一个原因
 } insn_t;
 
 /**
@@ -64,18 +66,20 @@ void mmu_load_elf(mmu_t *, int );
 /**
  * @brief  state.c
  */
+//定义一些可能导致模拟执行停止的原因
 enum exit_reason_t
 {
-    none,
-    direct_branch,
-    indirect_branch,
-    ecall,
+    none,           //没用停止原因
+    direct_branch,  //直接跳转指定， 如 jal beq 
+    indirect_branch,//间接跳转指令， 如 jalr br
+    ecall,          //系统调用命令，
 };
+
 typedef struct 
 {
-    enum exit_reason_t exit_reason;
-    u64 gp_regs[32];
-    u64 pc;
+    enum exit_reason_t exit_reason; //退出原因枚举
+    u64 gp_regs[32]; //risc-v 的32个通用寄存器
+    u64 pc;          //risc-v 的 pc 寄存器
 } state_t;
 
 
